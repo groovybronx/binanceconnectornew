@@ -121,8 +121,8 @@ class TickerService {
    */
   disconnect() {
     if (this.binanceWsClient) {
-      console.log("Déconnexion du stream Binance...");
-      this.binanceWsClient.unsubscribeSymbolMiniTicker(this.tradingPair);
+      console.log(`Déconnexion du stream Binance: ${this.streamName}...`);
+      this.binanceWsClient.unsubscribe(this.streamName); // Corrected line
       this.binanceWsClient.disconnect();
       console.log("Déconnecté du stream Binance.");
     }
