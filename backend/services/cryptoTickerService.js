@@ -1,4 +1,4 @@
-// backend/CryptoTickerService.js
+// backend/services/CryptoTickerService.js
 
 /**
  * @fileoverview Service pour gérer le ticker de prix de crypto-monnaies en temps réel.
@@ -24,7 +24,7 @@ const { WebsocketStream } = require('@binance/connector');
  * @typedef {Object} PriceUpdate
  * @property {string} type - Le type de message ('priceUpdate').
  * @property {string} pair - La paire de trading (ex: BTCUSDT).
- * @property {string} price - Le prix actuel formaté.
+ * @property {number} price - Le prix actuel.
  * @property {string} changePercent - Le pourcentage de changement formaté.
  * @property {number} timestamp - Le timestamp de la mise à jour.
  */
@@ -96,14 +96,14 @@ class TickerService {
         const priceUpdate = {
           type: 'priceUpdate',
           pair: ticker.s,
-          price: currentPrice.toFixed(2),
+          price: currentPrice, // Send the raw price as a number
           changePercent: percentChange.toFixed(2),
           timestamp: ticker.E,
         };
 
-        console.log(
-          `Update (miniTicker) ${priceUpdate.pair}: ${priceUpdate.price} (${priceUpdate.changePercent}%)`
-        );
+        // console.log(
+        //   `Update (miniTicker) ${priceUpdate.pair}: ${priceUpdate.price} (${priceUpdate.changePercent}%)`
+        // );
         this.broadcast(priceUpdate);
       }
     } catch (error) {

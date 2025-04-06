@@ -1,0 +1,142 @@
+/* src/assets/styles/main.css */
+
+/* Color Palette */
+:root {
+  --dark-background: #0f0e11;
+  --darker-background: #1e1e1e;
+  --darkest-background: #282828;
+  --light-text: #e0e0e0;
+  --muted-text: #999;
+  --dark-border: #333;
+  --green: #4CAF50;
+  --dark-green: #367c39;
+  --red: #ff6666;
+  --dark-red: #382828;
+  --dark-green-bid: #283828;
+  --dark-red-ask: #382828;
+  --dark-blue: #1a171f;
+}
+
+/* Global Styles */
+body {
+  background-color: var(--dark-background);
+  color: var(--light-text);
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--light-text);
+  margin-top: 0;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+p {
+  margin-top: 0;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+button {
+  background-color: var(--green);
+  color: var(--light-text);
+  border: none;
+  border-radius: 5px;
+  padding: 10px 15px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: var(--dark-green);
+}
+
+input,
+select {
+  background-color: var(--darkest-background);
+  color: var(--light-text);
+  border: 1px solid var(--dark-border);
+  border-radius: 5px;
+  padding: 10px;
+  font-size: 1em;
+}
+
+input::placeholder {
+  color: var(--muted-text);
+}
+
+/* Utility Classes */
+.rounded {
+  border-radius: 10px;
+}
+
+.shadow {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.status {
+  text-align: center;
+  color: var(--muted-text);
+}
+
+.status.error {
+  color: var(--red);
+}
+
+.up {
+  color: var(--green);
+}
+
+.down {
+  color: var(--red);
+}
+
+.gradient-background {
+  background: linear-gradient(to bottom, var(--dark-blue), var(--darkest-background));
+}
+
+.component-container {
+  color: var(--light-text);
+  border: 1px solid var(--dark-border);
+  padding: 20px;
+  min-width: 300px;
+
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-weight: bold;
+}
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+.label {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.value {
+  text-align: right;
+}

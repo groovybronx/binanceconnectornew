@@ -1,171 +1,153 @@
 <template>
-  <div class="search-pair-container">
-    <label for="pairInput">Changer de Paire via API :</label>
-    <div class="search-controls">
+  <div class="search-pair component-container rounded shadow gradient-background">
+    <h3>Search Pair</h3>
+    <div class="search-input-container">
       <input
-        id="pairInput"
         type="text"
-        v-model="searchInput"
-        placeholder="Ex: ETHUSDT, BTCUSDT..."
-        @keyup.enter="submitNewPairViaApi"
-        :disabled="isLoading"
+        v-model="searchPair"
+        @input="handleSearch"
+        placeholder="Enter pair (e.g., BTCUSDT)"
       />
-      <button @click="submitNewPairViaApi" :disabled="!canSubmit || isLoading">
-        {{ isLoading ? 'Chargement...' : 'Suivre' }}
-      </button>
+      <ul v-if="suggestions.length > 0" class="suggestions-list">
+        <li v-for="suggestion in displayedSuggestions" :key="suggestion" @click="selectSuggestion(suggestion)">
+          {{ suggestion }}
+        </li>
+      </ul>
     </div>
-    <div v-if="searchStatusMessage" :class="statusClass">
-      {{ searchStatusMessage }}
-    </div>
+    <button @click="setPair">Set Pair</button>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 
-const searchInput = ref('');
-const searchStatusMessage = ref(null); // Pour succès ou erreur
-const isLoading = ref(false);
-const isError = ref(false); // Pour le style du message
+const searchPair = ref('');
+const suggestions = ref([]);
+const allPairs = ref([]); // Stocke toutes les paires disponibles
+const maxSuggestions = 4; // Limite le nombre de suggestions à 4
 
-// Calculer si le bouton doit être actif
-const canSubmit = computed(() => searchInput.value.trim() !== '');
-
-// Classe CSS dynamique pour le message de statut
-const statusClass = computed(() => ({
-    'status-message': true,
-    'success': !isError.value,
-    'error': isError.value
-}));
-
-
-const submitNewPairViaApi = async () => {
-  const pair = searchInput.value.toUpperCase().trim();
-
-  searchStatusMessage.value = null; // Réinitialiser
-  isError.value = false;
-
-  if (!pair) {
-    searchStatusMessage.value = "Veuillez entrer un symbole de paire.";
-    isError.value = true;
-    return;
-  }
-
-  // Validation simple du format (peut être affinée)
-  if (!/^[A-Z]{3,}[A-Z]{3,}$/.test(pair)) {
-    searchStatusMessage.value = "Format invalide (ex: BTCUSDT).";
-    isError.value = true;
-    return;
-  }
-
-  isLoading.value = true; // Indiquer le chargement
-
+// Fonction pour récupérer toutes les paires disponibles
+const fetchAllPairs = async () => {
   try {
-    // URL de l'API backend
-    const apiUrl = 'http://localhost:8080/api/set-pair'; // Assurez-vous que le port est correct
+    const response = await fetch('http://localhost:8080/api/all-pairs'); // Use the new route
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error || `HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    if (data.allPairs) {
+      allPairs.value = data.allPairs;
+    } else {
+      console.warn('SearchPair: No pairs found in response.');
+    }
+  } catch (error) {
+    console.error('SearchPair: Error fetching all pairs:', error);
+  }
+};
 
-    const response = await fetch(apiUrl, {
+// Fonction pour filtrer les suggestions
+const filterSuggestions = (query) => {
+  if (!query) {
+    suggestions.value = [];
+    return;
+  }
+  const normalizedQuery = query.toUpperCase();
+  suggestions.value = allPairs.value.filter((pair) =>
+    pair.includes(normalizedQuery)
+  );
+};
+
+// Gère la recherche
+const handleSearch = (event) => {
+  searchPair.value = event.target.value;
+};
+
+// Sélectionne une suggestion
+const selectSuggestion = (suggestion) => {
+  searchPair.value = suggestion;
+  // Remove the selected suggestion from the list
+  suggestions.value = suggestions.value.filter(s => s !== suggestion);
+};
+
+// Définit la paire
+const setPair = async () => {
+  if (!searchPair.value) {
+    console.error('SearchPair: Pair is empty.');
+    return;
+  }
+  try {
+    const response = await fetch('http://localhost:8080/api/set-pair', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ pair: pair }) // Envoyer la paire dans le corps
+      body: JSON.stringify({ pair: searchPair.value }),
     });
 
-    const result = await response.json(); // Toujours essayer de lire le JSON
-
     if (!response.ok) {
-      // Si le statut HTTP n'est pas 2xx, c'est une erreur gérée par le backend
-      throw new Error(result.error || `Erreur HTTP ${response.status}`);
+      const result = await response.json();
+      console.error('SearchPair: Failed to set pair:', result.error || `HTTP error! status: ${response.status}`);
+      return;
     }
 
-    // Succès ! Le backend a accepté la demande.
-    console.log('SearchPair: Requête API réussie:', result);
-    searchStatusMessage.value = result.message || `Paire ${pair} suivie.`; // Afficher le message du backend
-    isError.value = false;
-    searchInput.value = ''; // Vider le champ en cas de succès
-
+    const result = await response.json();
+    console.log('SearchPair: Pair set successfully:', result.pair);
+    // suggestions.value = []; // Efface les suggestions après la validation (removed)
   } catch (error) {
-    console.error('SearchPair: Erreur lors de l\'appel API:', error);
-    // Afficher l'erreur (venant du backend via throw ou erreur réseau)
-    searchStatusMessage.value = error.message || 'Une erreur réseau est survenue.';
-    isError.value = true;
-  } finally {
-    isLoading.value = false; // Fin du chargement dans tous les cas
+    console.error('SearchPair: Error setting pair:', error);
   }
 };
+
+// Surveille les changements dans searchPair pour filtrer les suggestions
+watch(searchPair, (newQuery) => {
+  filterSuggestions(newQuery);
+});
+
+// Récupère toutes les paires au montage du composant
+onMounted(() => {
+  fetchAllPairs();
+});
+
+// Affiche uniquement les 4 premières suggestions
+const displayedSuggestions = computed(() => {
+  return suggestions.value.slice(0, maxSuggestions);
+});
 </script>
 
 <style scoped>
-/* Styles existants pour .search-pair-container, .search-controls, input, button */
-/* Assurez-vous qu'ils sont toujours là */
-.search-pair-container {
-  font-family: sans-serif;
-  padding: 15px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #fdfdfd;
-  margin-bottom: 20px;
-  max-width: 400px; /* Limiter la largeur */
+.search-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative; /* Pour positionner la liste des suggestions */
 }
 
-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    color: #555;
+.search-pair input {
+  background-color: var(--dark-background);
 }
 
-.search-controls {
-    display: flex;
-    gap: 10px;
+.suggestions-list {
+  position: absolute;
+  top: 100%; /* Place la liste sous l'input */
+  left: 0;
+  width: 100%;
+  background-color: var(--dark-background);
+  border: 1px solid var(--dark-border);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  z-index: 10; /* Pour que la liste soit au-dessus des autres éléments */
 }
 
-.search-controls input[type="text"] {
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    flex-grow: 1; /* Prend l'espace */
-    font-size: 1em;
+.suggestions-list li {
+  padding: 5px;
+  cursor: pointer;
 }
 
-.search-controls button {
-    padding: 10px 18px;
-    border: none;
-    background-color: #007bff; /* Bleu */
-    color: white;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.2s ease;
-    white-space: nowrap; /* Empêcher le texte du bouton de passer à la ligne */
+.suggestions-list li:hover {
+  background-color: var(--dark-border);
 }
-
-.search-controls button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-
-.search-controls button:hover:not(:disabled) {
-    background-color: #0056b3;
-}
-
-/* Nouveau style pour le message de statut */
-.status-message {
-    font-size: 0.9em;
-    margin-top: 10px;
-    padding: 8px;
-    border-radius: 4px;
-    text-align: center;
-}
-.status-message.success {
-    color: #155724; /* Vert Bootstrap */
-    background-color: #d4edda; /* Vert clair Bootstrap */
-    border: 1px solid #c3e6cb;
-}
-.status-message.error {
-    color: #721c24; /* Rouge Bootstrap */
-    background-color: #f8d7da; /* Rouge clair Bootstrap */
-    border: 1px solid #f5c6cb;
+.search-input-container {
+  position: relative;
 }
 </style>
