@@ -40,7 +40,7 @@ function setupBinanceClient(apiKey, apiSecret, baseUrl) {
 function subscribeToPair(pairSymbol, broadcast, TickerService) {
   const newPairUpper = pairSymbol.toUpperCase();
   if (tickerService) {
-    tickerService.disconnect();
+    tickerService.disconnect() ;
   }
   currentTradingPair = newPairUpper;
   tickerService = new TickerService(currentTradingPair, broadcast);

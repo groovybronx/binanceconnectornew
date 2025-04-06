@@ -2,9 +2,9 @@
 const { setupWebSocketServer, subscribeToDepth, disconnectDepthStream } = require('../websocket');
 const http = require('http');
 const { WebSocket } = require('ws');
-const { WebsocketStream } = require('@binance/connector');
+const { WebsocketStream } = require('@binance/spot');
 
-jest.mock('@binance/connector'); // Mock the Binance connector
+jest.mock('@binance/spot'); // Mock the Binance connector
 
 describe('WebSocket Module', () => {
   let server;

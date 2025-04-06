@@ -20,10 +20,11 @@ function setupRoutes(app, client, TickerService, broadcast) {
   // Import route handlers
   const pairRoutes = require('./routes/pairRoutes')(client, TickerService, broadcast);
   const balanceRoutes = require('./routes/balanceRoutes')(client);
-  const orderRoutes = require('./routes/orderRoutes')(client, getCurrentTradingPair);
+  const orderRoutes = require('./routes/orderRoutes')( getCurrentTradingPair);
   const topMoversRoutes = require('./routes/topMoversRoutes')(client);
   const allPairsRoutes = require('./routes/allPairsRoutes')(client); // Import the new route
   const rootRoutes = require('./routes/rootRoutes')(getCurrentTradingPair);
+  const accountRoutes = require('./routes/accountRoutes')(client); // Import the new route
 
   // Use route handlers
   router.use('/set-pair', pairRoutes);
@@ -32,6 +33,7 @@ function setupRoutes(app, client, TickerService, broadcast) {
   router.use('/top-movers', topMoversRoutes);
   router.use('/all-pairs', allPairsRoutes); // Use the new route
   router.use('/', rootRoutes);
+  router.use('/account', accountRoutes); // Use the new route
 
   // Mount the router to the app
   app.use('/api', router);

@@ -1,6 +1,6 @@
 // __tests__/binance.test.js
 const { setupBinanceClient, subscribeToPair, getCurrentTradingPair, disconnectTickerService } = require('../binance');
-const { Spot } = require('@binance/connector');
+const { Spot } = require('@binance/spot');
 const TickerService = require('../services/CryptoTickerService');
 const { subscribeToDepth } = require('../websocket');
 

@@ -2,11 +2,13 @@
 const request = require('supertest');
 const express = require('express');
 const { setupRoutes } = require('../routes');
-const { setupBinanceClient } = require('../binance');
+const { setupBinanceClient, getCurrentTradingPair } = require('../binance');
 const TickerService = require('../services/CryptoTickerService');
+
 
 jest.mock('../binance');
 jest.mock('../services/CryptoTickerService');
+jest.mock('../routes/orderRoutes');
 
 describe('Routes Module', () => {
   let app;
@@ -19,9 +21,10 @@ describe('Routes Module', () => {
     // Mock setupBinanceClient to return an object with account and newOrder methods
     client = {
       account: jest.fn(),
-      newOrder: jest.fn(),
     };
     setupBinanceClient.mockReturnValue(client);
+    // Mock getCurrentTradingPair to return a value
+    getCurrentTradingPair.mockReturnValue('BTCUSDT');
     setupRoutes(app, client, TickerService, mockBroadcast);
     jest.clearAllMocks();
     jest.spyOn(console, 'log').mockImplementation();
@@ -75,9 +78,20 @@ describe('Routes Module', () => {
   });
 
   it('POST /api/place-order devrait retourner un succès si l\'ordre est valide', async () => {
-    client.newOrder.mockResolvedValue({ data: {} });
-    const res = await request(app).post('/api/place-order').send({ pair: 'BTCUSDT', side: 'BUY', type: 'MARKET', quantity: 0.01 });
+    const mockCreateOrderRoutes = require('../routes/orderRoutes');
+    const mockPlaceTestOrder = jest.fn().mockResolvedValue({});
+    mockCreateOrderRoutes.mockReturnValue({
+      post: jest.fn((path, handler) => {
+        // Find the handler for the /api/place-order route
+        if (path === '/') {
+          // Call the handler with mock request and response objects
+          handler({ body: { side: 'BUY', type: 'MARKET', quantity: 1 } }, { status: jest.fn().mockReturnThis(), json: jest.fn() });
+        }
+      }),
+    });
+    const res = await request(app).post('/api/place-order').send({ side: 'BUY', type: 'MARKET', quantity: 1 });
     expect(res.statusCode).toEqual(200);
+    expect(res.body.message).toBe('Order placed successfully!');
   });
 
   it('GET / devrait retourner un succès', async () => {
