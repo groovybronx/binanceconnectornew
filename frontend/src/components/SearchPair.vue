@@ -9,7 +9,11 @@
         placeholder="Enter pair (e.g., BTCUSDT)"
       />
       <ul v-if="suggestions.length > 0" class="suggestions-list">
-        <li v-for="suggestion in displayedSuggestions" :key="suggestion" @click="selectSuggestion(suggestion)">
+        <li
+          v-for="suggestion in displayedSuggestions"
+          :key="suggestion"
+          @click="selectSuggestion(suggestion)"
+        >
           {{ suggestion }}
         </li>
       </ul>
@@ -19,61 +23,59 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue'
 
-const searchPair = ref('');
-const suggestions = ref([]);
-const allPairs = ref([]); // Stocke toutes les paires disponibles
-const maxSuggestions = 4; // Limite le nombre de suggestions à 4
+const searchPair = ref('')
+const suggestions = ref([])
+const allPairs = ref([]) // Stocke toutes les paires disponibles
+const maxSuggestions = 4 // Limite le nombre de suggestions à 4
 
 // Fonction pour récupérer toutes les paires disponibles
 const fetchAllPairs = async () => {
   try {
-    const response = await fetch('http://localhost:8080/api/all-pairs'); // Use the new route
+    const response = await fetch('http://localhost:8080/api/all-pairs') // Use the new route
     if (!response.ok) {
-      const result = await response.json();
-      throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      const result = await response.json()
+      throw new Error(result.error || `HTTP error! status: ${response.status}`)
     }
-    const data = await response.json();
+    const data = await response.json()
     if (data.allPairs) {
-      allPairs.value = data.allPairs;
+      allPairs.value = data.allPairs
     } else {
-      console.warn('SearchPair: No pairs found in response.');
+      console.warn('SearchPair: No pairs found in response.')
     }
   } catch (error) {
-    console.error('SearchPair: Error fetching all pairs:', error);
+    console.error('SearchPair: Error fetching all pairs:', error)
   }
-};
+}
 
 // Fonction pour filtrer les suggestions
 const filterSuggestions = (query) => {
   if (!query) {
-    suggestions.value = [];
-    return;
+    suggestions.value = []
+    return
   }
-  const normalizedQuery = query.toUpperCase();
-  suggestions.value = allPairs.value.filter((pair) =>
-    pair.includes(normalizedQuery)
-  );
-};
+  const normalizedQuery = query.toUpperCase()
+  suggestions.value = allPairs.value.filter((pair) => pair.includes(normalizedQuery))
+}
 
 // Gère la recherche
 const handleSearch = (event) => {
-  searchPair.value = event.target.value;
-};
+  searchPair.value = event.target.value
+}
 
 // Sélectionne une suggestion
 const selectSuggestion = (suggestion) => {
-  searchPair.value = suggestion;
+  searchPair.value = suggestion
   // Remove the selected suggestion from the list
-  suggestions.value = suggestions.value.filter(s => s !== suggestion);
-};
+  suggestions.value = suggestions.value.filter((s) => s !== suggestion)
+}
 
 // Définit la paire
 const setPair = async () => {
   if (!searchPair.value) {
-    console.error('SearchPair: Pair is empty.');
-    return;
+    console.error('SearchPair: Pair is empty.')
+    return
   }
   try {
     const response = await fetch('http://localhost:8080/api/set-pair', {
@@ -82,36 +84,39 @@ const setPair = async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ pair: searchPair.value }),
-    });
+    })
 
     if (!response.ok) {
-      const result = await response.json();
-      console.error('SearchPair: Failed to set pair:', result.error || `HTTP error! status: ${response.status}`);
-      return;
+      const result = await response.json()
+      console.error(
+        'SearchPair: Failed to set pair:',
+        result.error || `HTTP error! status: ${response.status}`,
+      )
+      return
     }
 
-    const result = await response.json();
-    console.log('SearchPair: Pair set successfully:', result.pair);
+    const result = await response.json()
+    console.log('SearchPair: Pair set successfully:', result.pair)
     // suggestions.value = []; // Efface les suggestions après la validation (removed)
   } catch (error) {
-    console.error('SearchPair: Error setting pair:', error);
+    console.error('SearchPair: Error setting pair:', error)
   }
-};
+}
 
 // Surveille les changements dans searchPair pour filtrer les suggestions
 watch(searchPair, (newQuery) => {
-  filterSuggestions(newQuery);
-});
+  filterSuggestions(newQuery)
+})
 
 // Récupère toutes les paires au montage du composant
 onMounted(() => {
-  fetchAllPairs();
-});
+  fetchAllPairs()
+})
 
 // Affiche uniquement les 4 premières suggestions
 const displayedSuggestions = computed(() => {
-  return suggestions.value.slice(0, maxSuggestions);
-});
+  return suggestions.value.slice(0, maxSuggestions)
+})
 </script>
 
 <style scoped>

@@ -13,13 +13,13 @@
 </template>
 
 <script setup>
-import SearchPair from './components/SearchPair.vue';
-import CryptoTicker from './components/CryptoTicker.vue';
-import BalanceDisplay from './components/BalanceDisplay.vue';
-import DepthDisplay from './components/DepthDisplay.vue';
-import OrderPlacement from './components/OrderPlacement.vue';
-import TopMovers from './components/TopMovers.vue';
-import './assets/styles/main.css'; // Import the centralized CSS
+import SearchPair from './components/SearchPair.vue'
+import CryptoTicker from './components/CryptoTicker.vue'
+import BalanceDisplay from './components/BalanceDisplay.vue'
+import DepthDisplay from './components/DepthDisplay.vue'
+import OrderPlacement from './components/OrderPlacement.vue'
+import TopMovers from './components/TopMovers.vue'
+import './assets/styles/main.css' // Import the centralized CSS
 </script>
 
 <style scoped>
@@ -30,7 +30,11 @@ import './assets/styles/main.css'; // Import the centralized CSS
   margin-top: 40px;
   gap: 20px;
   width: 100%;
-  background: linear-gradient(to bottom, var(--dark-background), var(--darker-background)); /* Gradient background */
+  background: linear-gradient(
+    to bottom,
+    var(--dark-background),
+    var(--darker-background)
+  ); /* Gradient background */
   padding: 20px;
 }
 

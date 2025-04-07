@@ -17,70 +17,70 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 
-const accountData = ref(null);
-const connectionStatus = ref('Connecting');
-const ws = ref(null);
+const accountData = ref(null)
+const connectionStatus = ref('Connecting')
+const ws = ref(null)
 
 const formatBalance = (balance) => {
   return parseFloat(balance).toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 8,
-  });
-};
+  })
+}
 
 const connectWebSocket = () => {
-  const backendWsUrl = 'ws://localhost:8080';
-  console.log(`AccountInfo: Attempting to connect to WebSocket backend at ${backendWsUrl}`);
-  ws.value = new WebSocket(backendWsUrl);
+  const backendWsUrl = 'ws://localhost:8080'
+  console.log(`AccountInfo: Attempting to connect to WebSocket backend at ${backendWsUrl}`)
+  ws.value = new WebSocket(backendWsUrl)
 
   ws.value.onopen = () => {
-    console.log('AccountInfo: WebSocket connection opened');
-    connectionStatus.value = 'Connected';
-    fetchAccountData();
-  };
+    console.log('AccountInfo: WebSocket connection opened')
+    connectionStatus.value = 'Connected'
+    fetchAccountData()
+  }
 
   ws.value.onmessage = (event) => {
     // We don't need to handle messages here, as we are fetching the data via REST API
-  };
+  }
 
   ws.value.onerror = (error) => {
-    console.error('AccountInfo: WebSocket error:', error);
-    connectionStatus.value = 'Error';
-  };
+    console.error('AccountInfo: WebSocket error:', error)
+    connectionStatus.value = 'Error'
+  }
 
   ws.value.onclose = (event) => {
-    console.log('AccountInfo: WebSocket connection closed:', event.reason || `Code ${event.code}`);
-    connectionStatus.value = `Closed (${event.code})`;
-  };
-};
+    console.log('AccountInfo: WebSocket connection closed:', event.reason || `Code ${event.code}`)
+    connectionStatus.value = `Closed (${event.code})`
+  }
+}
 
 const fetchAccountData = async () => {
   try {
-    const response = await fetch('http://localhost:8080/api/account');
+    const response = await fetch('http://localhost:8080/api/account')
     if (!response.ok) {
-      const result = await response.json();
-      throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      const result = await response.json()
+      throw new Error(result.error || `HTTP error! status: ${response.status}`)
     }
-    const data = await response.json();
-    accountData.value = data;
+    const data = await response.json()
+    accountData.value = data
   } catch (error) {
-    console.error('AccountInfo: Error fetching account data:', error);
-    connectionStatus.value = 'Error';
+    console.error('AccountInfo: Error fetching account data:', error)
+    connectionStatus.value = 'Error'
   }
-};
+}
 
 onMounted(() => {
-  connectWebSocket();
-});
+  connectWebSocket()
+})
 
 onUnmounted(() => {
   if (ws.value) {
-    console.log('AccountInfo: Closing WebSocket connection from frontend.');
-    ws.value.close();
+    console.log('AccountInfo: Closing WebSocket connection from frontend.')
+    ws.value.close()
   }
-});
+})
 </script>
 
 <style scoped>

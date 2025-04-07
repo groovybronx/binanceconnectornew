@@ -28,39 +28,39 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted } from 'vue'
 
-const topGainers = ref([]);
-const topLosers = ref([]);
-const isLoading = ref(false);
-const error = ref(null);
+const topGainers = ref([])
+const topLosers = ref([])
+const isLoading = ref(false)
+const error = ref(null)
 
 const fetchTopMovers = async () => {
-  isLoading.value = true;
-  error.value = null;
+  isLoading.value = true
+  error.value = null
   try {
-    const response = await fetch('http://localhost:8080/api/top-movers');
+    const response = await fetch('http://localhost:8080/api/top-movers')
     if (!response.ok) {
-      const result = await response.json();
-      throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      const result = await response.json()
+      throw new Error(result.error || `HTTP error! status: ${response.status}`)
     }
-    const data = await response.json();
-    topGainers.value = data.gainers;
-    topLosers.value = data.losers;
+    const data = await response.json()
+    topGainers.value = data.gainers
+    topLosers.value = data.losers
   } catch (err) {
-    error.value = err.message;
+    error.value = err.message
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
+}
 
 const formatSymbol = (symbol) => {
-  return symbol.replace('USDT', '');
-};
+  return symbol.replace('USDT', '')
+}
 
 onMounted(() => {
-  fetchTopMovers();
-});
+  fetchTopMovers()
+})
 </script>
 
 <style scoped>

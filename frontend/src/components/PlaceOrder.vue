@@ -39,7 +39,7 @@
 </template>
 
 <script>
-import axios from 'axios';
+import axios from 'axios'
 
 export default {
   name: 'PlaceOrder',
@@ -54,25 +54,25 @@ export default {
       orderResponse: null,
       error: null,
       loading: false,
-    };
+    }
   },
   methods: {
     async handleSubmit() {
-      this.loading = true;
-      this.error = null;
-      this.orderResponse = null;
+      this.loading = true
+      this.error = null
+      this.orderResponse = null
 
       try {
-        const response = await axios.post('/api/place-order', this.orderParams);
-        this.orderResponse = response.data;
+        const response = await axios.post('/api/place-order', this.orderParams)
+        this.orderResponse = response.data
       } catch (err) {
-        this.error = err.response?.data?.error || 'Failed to place order';
+        this.error = err.response?.data?.error || 'Failed to place order'
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
   },
-};
+}
 </script>
 
 <style scoped>

@@ -8,7 +8,7 @@
   --light-text: #e0e0e0;
   --muted-text: #999;
   --dark-border: #333;
-  --green: #4CAF50;
+  --green: #4caf50;
   --dark-green: #367c39;
   --red: #ff6666;
   --dark-red: #382828;
@@ -112,7 +112,6 @@ input::placeholder {
   border: 1px solid var(--dark-border);
   padding: 20px;
   min-width: 300px;
-
 }
 
 .form-group {

@@ -36,17 +36,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue'
 
-const currentPair = ref('BTCUSDT'); // Valeur par défaut
+const currentPair = ref('BTCUSDT') // Valeur par défaut
 const orderData = ref({
   side: 'BUY',
   type: 'MARKET',
   price: null,
   quantity: null,
-});
-const orderResponse = ref(null);
-let socket = null;
+})
+const orderResponse = ref(null)
+let socket = null
 
 const placeOrder = async () => {
   try {
@@ -56,51 +56,54 @@ const placeOrder = async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ...orderData.value }),
-    });
+    })
 
     if (!response.ok) {
-      const result = await response.json();
-      console.error('OrderPlacement: Failed to place order:', result.error || `HTTP error! status: ${response.status}`);
-      return;
+      const result = await response.json()
+      console.error(
+        'OrderPlacement: Failed to place order:',
+        result.error || `HTTP error! status: ${response.status}`,
+      )
+      return
     }
 
-    const result = await response.json();
-    orderResponse.value = JSON.stringify(result, null, 2);
-    console.log('OrderPlacement: Order placed successfully:', result);
+    const result = await response.json()
+    orderResponse.value = JSON.stringify(result, null, 2)
+    console.log('OrderPlacement: Order placed successfully:', result)
   } catch (error) {
-    console.error('OrderPlacement: Error placing order:', error);
+    console.error('OrderPlacement: Error placing order:', error)
   }
-};
+}
 
 onMounted(() => {
-  socket = new WebSocket('ws://localhost:8080');
+  socket = new WebSocket('ws://localhost:8080')
 
   socket.addEventListener('open', () => {
-    console.log('OrderPlacement: WebSocket connection opened');
-  });
+    console.log('OrderPlacement: WebSocket connection opened')
+  })
 
   socket.addEventListener('message', (event) => {
-    const data = JSON.parse(event.data);
+    const data = JSON.parse(event.data)
     if (data.type === 'config') {
-      currentPair.value = data.pair;
-      console.log('OrderPlacement: Paire mise à jour:', currentPair.value);
+      currentPair.value = data.pair
+      console.log('OrderPlacement: Paire mise à jour:', currentPair.value)
     }
-  });
+  })
 
   socket.addEventListener('close', () => {
-    console.log('OrderPlacement: WebSocket connection closed');
-  });
+    console.log('OrderPlacement: WebSocket connection closed')
+  })
 
   socket.addEventListener('error', (error) => {
-    console.error('OrderPlacement: WebSocket error:', error);
-  });
-});
+    console.error('OrderPlacement: WebSocket error:', error)
+  })
+})
 
 onUnmounted(() => {
   if (socket) {
-    socket.close();
+    socket.close()
   }
-});
+})
 </script>
 
 <style scoped>

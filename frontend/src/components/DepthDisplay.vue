@@ -28,7 +28,12 @@
     </div>
     <div v-else class="status">No data available.</div>
     <div class="button-container">
-      <button @click="toggleUpdates" :class="{ 'stop-button': isUpdating, 'start-button': !isUpdating }">{{ isUpdating ? 'Stop' : 'Start' }}</button>
+      <button
+        @click="toggleUpdates"
+        :class="{ 'stop-button': isUpdating, 'start-button': !isUpdating }"
+      >
+        {{ isUpdating ? 'Stop' : 'Start' }}
+      </button>
     </div>
   </div>
 </template>
@@ -42,7 +47,7 @@ const bestAskPrice = ref(null)
 const bestAskQuantity = ref(null)
 const connectionStatus = ref('Connecting')
 const ws = ref(null)
-const isUpdating = ref(true); // New: Track if updates are active
+const isUpdating = ref(true) // New: Track if updates are active
 
 const formattedBestBidPrice = computed(() => {
   return bestBidPrice.value !== null
@@ -87,7 +92,7 @@ const connectWebSocket = () => {
   }
 
   ws.value.onmessage = (event) => {
-    if (!isUpdating.value) return; // Skip updates if isUpdating is false
+    if (!isUpdating.value) return // Skip updates if isUpdating is false
     try {
       const data = JSON.parse(event.data)
       if (data.type === 'depthUpdate') {
@@ -120,8 +125,8 @@ const connectWebSocket = () => {
 }
 
 const toggleUpdates = () => {
-  isUpdating.value = !isUpdating.value;
-  console.log(`OrderBookDepth: Updates ${isUpdating.value ? 'started' : 'stopped'}`);
+  isUpdating.value = !isUpdating.value
+  console.log(`OrderBookDepth: Updates ${isUpdating.value ? 'started' : 'stopped'}`)
 }
 
 onMounted(() => {
