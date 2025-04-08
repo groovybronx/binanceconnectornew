@@ -32,7 +32,12 @@ function setupWebSocketServer(server, broadcast, subscribeToDepth, getCurrentTra
    * @type {WebSocketServer}
    * @description The WebSocket server instance.
    */
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ server , broadcast, subscribeToDepth, getCurrentTradingPair });
+  console.log('WebSocket server configuré et en attente de connexions...');
+  // Écouter les connexions WebSocket.
+  wss.on('listening', () => {
+    console.log('WebSocket server en écoute sur le port:', server.address().port);
+  });
 
   wss.on('connection', (ws) => {
     console.log('Client Frontend connecté au backend via WebSocket');

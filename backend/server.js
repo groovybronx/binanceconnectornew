@@ -43,6 +43,12 @@ const wss = setupWebSocketServer(server, (data) => broadcast(wss, data), subscri
 // Setup routes
 setupRoutes(app, client, TickerService, (data) => broadcast(wss, data));
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Global Error Handler:', err);
+  res.status(500).json({ error: 'An unexpected error occurred on the server.' });
+});
+
 // Start the server
 server.listen(PORT, () => {
   console.log(`Serveur HTTP écoutant sur http://localhost:${PORT}`);

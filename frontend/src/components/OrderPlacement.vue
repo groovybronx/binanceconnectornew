@@ -17,9 +17,10 @@
       <select id="type" v-model="orderData.type">
         <option value="MARKET">Market</option>
         <option value="LIMIT">Limit</option>
+        <option value="LIMIT_MAKER">Limit Maker</option>
       </select>
     </div>
-    <div class="form-group" v-if="orderData.type === 'LIMIT'">
+    <div class="form-group" v-if="['LIMIT', 'LIMIT_MAKER'].includes(orderData.type)">
       <label for="price">Price:</label>
       <input type="number" id="price" v-model="orderData.price" />
     </div>
@@ -27,83 +28,93 @@
       <label for="quantity">Quantity:</label>
       <input type="number" id="quantity" v-model="orderData.quantity" />
     </div>
-    <button @click="placeOrder">Place Order</button>
+    <div class="form-group" v-if="orderData.type === 'LIMIT'">
+      <label for="timeInForce">Time In Force:</label>
+      <select id="timeInForce" v-model="orderData.timeInForce">
+        <option value="GTC">GTC</option>
+        <option value="IOC">IOC</option>
+        <option value="FOK">FOK</option>
+      </select>
+    </div>
+    <button @click="placeOrder" :disabled="isRunning">
+      {{ isRunning ? 'Placing...' : 'Place Order' }}
+    </button>
     <div v-if="orderResponse" class="order-response rounded">
       <p>Order Response:</p>
       <pre>{{ orderResponse }}</pre>
+    </div>
+    <div v-if="errorMessage" class="error-message rounded">
+      <p>Error:</p>
+      <pre>{{ errorMessage }}</pre>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import { useWebSocketStore } from '../stores/webSocket';
 
-const currentPair = ref('BTCUSDT') // Valeur par défaut
+const webSocketStore = useWebSocketStore();
+
 const orderData = ref({
+  symbol: webSocketStore.currentPair,
   side: 'BUY',
   type: 'MARKET',
   price: null,
   quantity: null,
-})
-const orderResponse = ref(null)
-let socket = null
+  newClientOrderId: `my_order_id_${Date.now()}`,
+  newOrderRespType: 'ACK',
+  recvWindow: 5000,
+  timeInForce: 'GTC',
+});
+const orderResponse = ref(null);
+const errorMessage = ref(null);
+const isRunning = ref(false);
+
+const currentPair = computed(() => webSocketStore.currentPair);
 
 const placeOrder = async () => {
+  isRunning.value = true;
+  errorMessage.value = null;
   try {
+    const orderDataToSend = { ...orderData.value };
+    if (orderDataToSend.type === 'MARKET') {
+      delete orderDataToSend.price;
+    }
+
     const response = await fetch('http://localhost:8080/api/place-order', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...orderData.value }),
-    })
+      body: JSON.stringify(orderDataToSend),
+    });
 
     if (!response.ok) {
-      const result = await response.json()
-      console.error(
-        'OrderPlacement: Failed to place order:',
-        result.error || `HTTP error! status: ${response.status}`,
-      )
-      return
+      const result = await response.json();
+      errorMessage.value = result.error || `HTTP error! status: ${response.status}`;
+      console.error('OrderPlacement: Failed to place order:', errorMessage.value);
+      return;
     }
 
-    const result = await response.json()
-    orderResponse.value = JSON.stringify(result, null, 2)
-    console.log('OrderPlacement: Order placed successfully:', result)
+    const result = await response.json();
+    orderResponse.value = JSON.stringify(result, null, 2);
+    console.log('OrderPlacement: Order placed successfully:', result);
   } catch (error) {
-    console.error('OrderPlacement: Error placing order:', error)
+    errorMessage.value = error.message;
+    console.error('OrderPlacement: Error placing order:', error);
+  } finally {
+    isRunning.value = false;
   }
-}
+};
 
-onMounted(() => {
-  socket = new WebSocket('ws://localhost:8080')
-
-  socket.addEventListener('open', () => {
-    console.log('OrderPlacement: WebSocket connection opened')
-  })
-
-  socket.addEventListener('message', (event) => {
-    const data = JSON.parse(event.data)
-    if (data.type === 'config') {
-      currentPair.value = data.pair
-      console.log('OrderPlacement: Paire mise à jour:', currentPair.value)
-    }
-  })
-
-  socket.addEventListener('close', () => {
-    console.log('OrderPlacement: WebSocket connection closed')
-  })
-
-  socket.addEventListener('error', (error) => {
-    console.error('OrderPlacement: WebSocket error:', error)
-  })
-})
+watch(currentPair, (newPair) => {
+  orderData.value.symbol = newPair;
+});
 
 onUnmounted(() => {
-  if (socket) {
-    socket.close()
-  }
-})
+  // No need to disconnect WebSocket here, handled by the store
+});
 </script>
 
 <style scoped>
@@ -124,5 +135,13 @@ onUnmounted(() => {
   padding: 10px;
   font-size: 0.9em;
   white-space: pre-wrap;
+}
+.error-message {
+  background-color: var(--dark-background);
+  border: 1px solid red;
+  padding: 10px;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  color: red;
 }
 </style>

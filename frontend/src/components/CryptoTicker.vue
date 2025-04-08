@@ -19,19 +19,23 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+<script setup lang="ts">
+import { computed, ref } from 'vue' // Removed onMounted, onUnmounted
+import { useWebSocketStore } from '../stores/webSocket' // Import the store
 
-const tradingPair = ref('Loading...')
-const currentPrice = ref(null)
-const priceChangePercent = ref(null)
-const lastUpdate = ref(null)
-const connectionStatus = ref('Connecting')
-const ws = ref(null)
-let lastPrice = null // Initialize lastPrice to null
+const store = useWebSocketStore() // Use the store
 
-const isConnected = computed(() => connectionStatus.value === 'Connected')
-const hasError = computed(() => connectionStatus.value === 'Error')
+// Local state for comparison logic if needed, or manage in store
+let lastPrice = null
+
+// Use computed properties to access store state
+const tradingPair = computed(() => store.currentPair)
+const currentPrice = computed(() => store.currentPrice)
+const priceChangePercent = computed(() => store.priceChangePercent)
+const lastUpdate = computed(() => store.lastUpdate)
+const connectionStatus = computed(() => store.connectionStatus)
+const isConnected = computed(() => store.isConnected)
+const hasError = computed(() => store.hasError)
 
 // Function to format the price with dynamic decimal places and scientific notation
 const formatPrice = (price) => {
@@ -57,73 +61,32 @@ const formatPrice = (price) => {
 }
 
 const formattedPrice = computed(() => {
-  return formatPrice(parseFloat(currentPrice.value))
+  // Use store's currentPrice
+  return formatPrice(currentPrice.value)
 })
 
 const priceClass = computed(() => {
+  // Use store's priceChangePercent or compare current/last price
   if (priceChangePercent.value !== null) {
-    return parseFloat(priceChangePercent.value) >= 0 ? 'up' : 'down'
+    // Ensure priceChangePercent is treated as a number for comparison
+    return Number(priceChangePercent.value) >= 0 ? 'up' : 'down'
   } else {
+    // Fallback logic using lastPrice (consider if this is still needed/reliable)
     if (currentPrice.value === null || lastPrice === null) return ''
-    return parseFloat(currentPrice.value) >= lastPrice ? 'up' : 'down'
+    const priceDiff = Number(currentPrice.value) - lastPrice
+    lastPrice = Number(currentPrice.value) // Update lastPrice
+    return priceDiff >= 0 ? 'up' : 'down'
   }
 })
 
 const formattedTimestamp = computed(() => {
+  // Use store's lastUpdate
   if (!lastUpdate.value) return '-'
   return new Date(lastUpdate.value).toLocaleTimeString()
 })
 
-const connectWebSocket = () => {
-  const backendWsUrl = 'ws://localhost:8080'
-  console.log(`Attempting to connect to WebSocket backend at ${backendWsUrl}`)
-  ws.value = new WebSocket(backendWsUrl)
-
-  ws.value.onopen = () => {
-    console.log('WebSocket connection to backend established.')
-    connectionStatus.value = 'Connected'
-  }
-
-  ws.value.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data)
-
-      if (data.type === 'config') {
-        tradingPair.value = data.pair
-        console.log(`Trading pair set to: ${tradingPair.value}`)
-      } else if (data.type === 'priceUpdate') {
-        lastPrice = currentPrice.value // Store the previous price before updating
-        currentPrice.value = data.price
-        lastUpdate.value = data.timestamp
-        priceChangePercent.value = data.changePercent
-      }
-    } catch (error) {
-      console.error('Failed to parse message or update state:', error)
-    }
-  }
-
-  ws.value.onerror = (error) => {
-    console.error('WebSocket Error:', error)
-    connectionStatus.value = 'Error'
-  }
-
-  ws.value.onclose = (event) => {
-    console.log('WebSocket connection closed:', event.reason || `Code ${event.code}`)
-    connectionStatus.value = `Closed (${event.code})`
-    currentPrice.value = null
-  }
-}
-
-onMounted(() => {
-  connectWebSocket()
-})
-
-onUnmounted(() => {
-  if (ws.value) {
-    console.log('Closing WebSocket connection from frontend.')
-    ws.value.close()
-  }
-})
+// WebSocket connection logic is now handled by the store in App.vue
+// Removed connectWebSocket, onMounted, onUnmounted
 </script>
 
 <style scoped>

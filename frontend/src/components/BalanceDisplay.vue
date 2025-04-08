@@ -20,15 +20,19 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, computed } from 'vue' // Removed onMounted, onUnmounted
+import { useWebSocketStore } from '../stores/webSocket' // Import the store
+
+const store = useWebSocketStore() // Use the store
 
 const balances = ref(null)
 const isLoading = ref(false)
 const error = ref(null)
-const pair = ref('BTCUSDT')
-const connectionStatus = ref('Connecting')
-const ws = ref(null)
+
+// Use computed properties for pair and connection status from the store
+const pair = computed(() => store.currentPair)
+const connectionStatus = computed(() => store.connectionStatus)
 
 const fetchBalance = async (pair) => {
   isLoading.value = true
@@ -48,62 +52,22 @@ const fetchBalance = async (pair) => {
   }
 }
 
-const connectWebSocket = () => {
-  const backendWsUrl = 'ws://localhost:8080'
-  console.log(`BalanceDisplay: Attempting to connect to WebSocket backend at ${backendWsUrl}`)
-  ws.value = new WebSocket(backendWsUrl)
-
-  ws.value.onopen = () => {
-    console.log('BalanceDisplay: WebSocket connection to backend established.')
-    connectionStatus.value = 'Connected'
-  }
-
-  ws.value.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data)
-      if (data.type === 'config') {
-        pair.value = data.pair
-        console.log(`BalanceDisplay: Trading pair set to: ${pair.value}`)
-      }
-    } catch (error) {
-      console.error('BalanceDisplay: Failed to parse message or update state:', error)
-    }
-  }
-
-  ws.value.onerror = (error) => {
-    console.error('BalanceDisplay: WebSocket Error:', error)
-    connectionStatus.value = 'Error'
-  }
-
-  ws.value.onclose = (event) => {
-    console.log(
-      'BalanceDisplay: WebSocket connection closed:',
-      event.reason || `Code ${event.code}`,
-    )
-    connectionStatus.value = `Closed (${event.code})`
-  }
-}
-
+// Watch the pair from the store to fetch balance
 watch(
   pair,
   (newPair) => {
-    if (newPair) {
+    if (newPair && store.isConnected) { // Fetch only if connected and pair is available
       fetchBalance(newPair)
+    } else if (!store.isConnected) {
+      // Optionally clear balance or show a message if disconnected
+      balances.value = null;
+      error.value = 'WebSocket disconnected. Cannot fetch balance.';
     }
   },
-  { immediate: true },
+  { immediate: true }, // Fetch balance immediately when the component mounts if connected
 )
 
-onMounted(() => {
-  connectWebSocket()
-})
-
-onUnmounted(() => {
-  if (ws.value) {
-    console.log('BalanceDisplay: Closing WebSocket connection from frontend.')
-    ws.value.close()
-  }
-})
+// Removed connectWebSocket, onMounted, onUnmounted as WS is handled by the store/App.vue
 </script>
 
 <style scoped>
