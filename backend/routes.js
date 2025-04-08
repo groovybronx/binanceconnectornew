@@ -28,6 +28,7 @@ const accountRoutes = require('./routes/accountRoutes')(client); // Import the n
 const createOrderTestRoute = require('./routes/orderTestRoute')(client);
 const allOrdersRoute = require('./routes/allOrdersRoute')(client);
 const createOrdersRoute = require('./routes/ordersRoute');
+const createCancelOrderRoute = require('./routes/cancelOrderRoute');
 
 
 
@@ -41,6 +42,7 @@ const createOrdersRoute = require('./routes/ordersRoute');
   router.use('/account', accountRoutes); // Use the new route
   router.use('/test-order', createOrderTestRoute);
   router.use('/all-orders', allOrdersRoute);
+  router.use('/cancel-order', createCancelOrderRoute(client));
   router.use('/place-order', placeOrderRoutes);
 
   // Mount the router to the app

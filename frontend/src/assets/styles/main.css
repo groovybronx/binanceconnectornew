@@ -22,7 +22,7 @@ body {
   background-color: var(--dark-background);
   color: var(--light-text);
   font-family: sans-serif;
-  margin: 0;
+  margin: 20px auto; /* Add margin to center the app */
   padding: 0;
 }
 

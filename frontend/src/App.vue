@@ -5,10 +5,11 @@
       <SearchPair />
       <CryptoTicker />
       <BalanceDisplay />
-      <DepthDisplay />
       <OrderPlacement />
       <TopMovers />
+      <DepthDisplay />
     </div>
+
     <div class="order-list-wrapper">
       <OrderList />
     </div>
@@ -43,29 +44,32 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 40px;
-  gap: 20px;
-  width: 100%;
+  margin: 40px auto; /* Increased margin and center the app */
+  gap: 20px; /* Increased gap */
+  width: 80%; /* Reduced width to create margin on the sides */
+  font-size: 14px; /* Reduced font size */
   background: linear-gradient(
     to bottom,
     var(--dark-background),
     var(--darker-background)
   ); /* Gradient background */
-  padding: 20px;
+  padding: 20px; /* Reduced padding */
 }
 
 .grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  grid-gap: 20px;
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 20px; /* Increased gap */
+
+
   width: 100%;
-  max-width: 1200px; /* Added max-width */
-  padding: 0 20px;
+
 }
 
 .order-list-wrapper {
+  display: flex;
   width: 100%;
-  max-width: 1200px; /* Added max-width */
-  padding: 0 20px;
+
 }
 </style>

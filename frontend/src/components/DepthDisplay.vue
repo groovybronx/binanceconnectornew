@@ -2,27 +2,17 @@
   <div class="depth-display component-container rounded shadow gradient-background">
     <h3>Order Book Depth</h3>
     <div v-if="connectionStatus !== 'Connected'" class="status">{{ connectionStatus }}...</div>
-    <div v-else-if="bestBidPrice && bestAskPrice" class="depth-data">
-      <div class="bid-data rounded">
-        <h4>Best Bid</h4>
+    <div v-else-if="bids.length > 0 && asks.length > 0" class="depth-data">
+      <div class="bid-data rounded" :class="{'sell-trend': buyingSellingForce < 1}">
+        <h4>Spread:</h4>
         <p class="data-row">
-          <span class="label">Price:</span>
-          <span class="value price">{{ formattedBestBidPrice }}</span>
+          <span class="value price">{{ spread }}</span>
         </p>
+        <h4>Buying/Selling Force:</h4>
         <p class="data-row">
-          <span class="label">Quantity:</span>
-          <span class="value quantity">{{ formattedBestBidQuantity }}</span>
-        </p>
-      </div>
-      <div class="ask-data rounded">
-        <h4>Best Ask</h4>
-        <p class="data-row">
-          <span class="label">Price:</span>
-          <span class="value price">{{ formattedBestAskPrice }}</span>
-        </p>
-        <p class="data-row">
-          <span class="label">Quantity:</span>
-          <span class="value quantity">{{ formattedBestAskQuantity }}</span>
+          <span class="value" :class="{'strong-buy': buyingSellingForce > 1, 'strong-sell': buyingSellingForce < 1, 'neutral': buyingSellingForce === 1}">
+            {{ buyingSellingForceText }}
+          </span>
         </p>
       </div>
     </div>
@@ -39,47 +29,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, shallowRef } from 'vue'
 
-const bestBidPrice = ref(null)
-const bestBidQuantity = ref(null)
-const bestAskPrice = ref(null)
-const bestAskQuantity = ref(null)
+const bids = ref<[string, string][]>([])
+const asks = ref<[string, string][]>([])
 const connectionStatus = ref('Connecting')
 const ws = ref(null)
-const isUpdating = ref(true) // New: Track if updates are active
+const isUpdating = ref(true)
 
-const formattedBestBidPrice = computed(() => {
-  return bestBidPrice.value !== null
-    ? parseFloat(bestBidPrice.value)
-        .toFixed(8)
-        .replace(/\.?0+$/, '')
-    : null
+const depthHistory = ref<any[]>([]) // Store depth history
+const historyDuration = 10000 // 10 seconds
+
+const topBids = computed(() => {
+  const slicedBids = bids.value.slice(0, 5);
+  while (slicedBids.length < 5) {
+    slicedBids.push(['-', '-']); // Add empty values
+  }
+  console.log('Frontend: topBids:', slicedBids);
+  return slicedBids;
+})
+const topAsks = computed(() => {
+  const slicedAsks = asks.value.slice(0, 5);
+  while (slicedAsks.length < 5) {
+    slicedAsks.push(['-', '-']); // Add empty values
+  }
+  console.log('Frontend: topAsks:', slicedAsks);
+  return slicedAsks;
 })
 
-const formattedBestBidQuantity = computed(() => {
-  return bestBidQuantity.value !== null
-    ? parseFloat(bestBidQuantity.value)
-        .toFixed(8)
-        .replace(/\.?0+$/, '')
-    : null
+const totalBidVolume = computed(() => {
+  const volume = bids.value.reduce((total, bid) => total + parseFloat(bid[1]), 0).toFixed(8);
+  console.log('Frontend: totalBidVolume:', volume);
+  return volume;
 })
 
-const formattedBestAskPrice = computed(() => {
-  return bestAskPrice.value !== null
-    ? parseFloat(bestAskPrice.value)
-        .toFixed(8)
-        .replace(/\.?0+$/, '')
-    : null
+const totalAskVolume = computed(() => {
+  const volume = asks.value.reduce((total, ask) => total + parseFloat(ask[1]), 0).toFixed(8);
+  console.log('Frontend: totalAskVolume:', volume);
+  return volume;
 })
 
-const formattedBestAskQuantity = computed(() => {
-  return bestAskQuantity.value !== null
-    ? parseFloat(bestAskQuantity.value)
-        .toFixed(8)
-        .replace(/\.?0+$/, '')
-    : null
-})
+const formatPrice = (price: string) => {
+  return parseFloat(price).toFixed(8).replace(/\.?0+$/, '')
+}
+
+const formatQuantity = (quantity: string) => {
+  return parseFloat(quantity).toFixed(8).replace(/\.?0+$/, '')
+}
 
 const connectWebSocket = () => {
   const backendWsUrl = 'ws://localhost:8080'
@@ -92,24 +88,48 @@ const connectWebSocket = () => {
   }
 
   ws.value.onmessage = (event) => {
-    if (!isUpdating.value) return // Skip updates if isUpdating is false
+    if (!isUpdating.value) return
     try {
-      const data = JSON.parse(event.data)
+      const data = JSON.parse(event.data);
       if (data.type === 'depthUpdate') {
-        // Extract only the best bid and best ask
-        if (data.bids && data.bids.length > 0) {
-          bestBidPrice.value = data.bids[0][0]
-          bestBidQuantity.value = data.bids[0][1]
-        }
-        if (data.asks && data.asks.length > 0) {
-          bestAskPrice.value = data.asks[0][0]
-          bestAskQuantity.value = data.asks[0][1]
-        }
-        // console.log('DepthDisplay: Best Bid:', bestBidPrice.value, bestBidQuantity.value)
-        // console.log('DepthDisplay: Best Ask:', bestAskPrice.value, bestAskQuantity.value)
+        // Aggregate bids
+        const aggregatedBids = data.bids.reduce((acc, [price, quantity]) => {
+          const existingBid = acc.find(bid => bid[0] === price);
+          if (existingBid) {
+            existingBid[1] = (parseFloat(existingBid[1]) + parseFloat(quantity)).toString();
+          } else {
+            acc.push([price, quantity]);
+          }
+          return acc;
+        }, []);
+
+        // Aggregate asks
+        const aggregatedAsks = data.asks.reduce((acc, [price, quantity]) => {
+          const existingAsk = acc.find(ask => ask[0] === price);
+          if (existingAsk) {
+            existingAsk[1] = (parseFloat(existingAsk[1]) + parseFloat(quantity)).toString();
+          } else {
+            acc.push([price, quantity]);
+          }
+          return acc;
+        }, []);
+
+        bids.value = aggregatedBids;
+        asks.value = aggregatedAsks;
+
+        // Store depth data with timestamp
+        depthHistory.value.push({
+          timestamp: Date.now(),
+          bids: aggregatedBids,
+          asks: aggregatedAsks,
+        });
+
+        // Clean up old data
+        const now = Date.now();
+        depthHistory.value = depthHistory.value.filter(item => now - item.timestamp <= historyDuration);
       }
     } catch (error) {
-      console.error('DepthDisplay: Failed to parse message or update state:', error)
+      console.error('DepthDisplay: Failed to parse message or update state:', error);
     }
   }
 
@@ -123,6 +143,50 @@ const connectWebSocket = () => {
     connectionStatus.value = `Closed (${event.code})`
   }
 }
+
+const spread = shallowRef('-');
+
+const updateSpread = () => {
+  if (bids.value.length > 0 && asks.value.length > 0) {
+    const bestBid = parseFloat(bids.value[0][0]);
+    const bestAsk = parseFloat(asks.value[0][0]);
+    spread.value = (bestAsk - bestBid).toFixed(8);
+  }
+};
+
+watch([bids, asks], () => {
+  updateSpread();
+});
+
+const buyingSellingForce = computed(() => {
+  let totalBidVolumeHistory = 0;
+  let totalAskVolumeHistory = 0;
+
+  depthHistory.value.forEach(item => {
+    totalBidVolumeHistory += item.bids.reduce((total, bid) => total + parseFloat(bid[1]), 0);
+    totalAskVolumeHistory += item.asks.reduce((total, ask) => total + parseFloat(ask[1]), 0);
+  });
+
+  if (totalBidVolumeHistory > 0 && totalAskVolumeHistory > 0) {
+    return totalBidVolumeHistory / totalAskVolumeHistory;
+  } else {
+    return 1; // Neutral if no data
+  }
+});
+
+const buyingSellingForceText = computed(() => {
+  if (buyingSellingForce.value > 1.2) {
+    return 'Strong Buy';
+  } else if (buyingSellingForce.value > 1) {
+    return 'Buy';
+  } else if (buyingSellingForce.value < 0.8) {
+    return 'Strong Sell';
+  } else if (buyingSellingForce.value < 1) {
+    return 'Sell';
+  } else {
+    return 'Neutral';
+  }
+});
 
 const toggleUpdates = () => {
   isUpdating.value = !isUpdating.value
@@ -144,13 +208,18 @@ onUnmounted(() => {
 <style scoped>
 .depth-display {
   margin-bottom: 20px;
-  position: relative; /* Make this container relative */
+  position: relative;
+  overflow: auto; /* Enable scrolling if content overflows */
+  border: 1px solid var(--dark-border); /* Add a border */
+  font-family: 'Arial', sans-serif; /* Use a more professional font */
+  text-align: center; /* Center the text */
 }
 
 .depth-data {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  font-size: 14px; /* Smaller font size for better readability */
 }
 
 .bid-data,
@@ -159,7 +228,9 @@ onUnmounted(() => {
   padding: 15px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start; /* Align content to the top */
+  height: auto; /* Fixed height for bid and ask frames */
+  overflow: auto; /* Enable scrolling if content overflows */
 }
 
 .bid-data {
@@ -169,14 +240,61 @@ onUnmounted(() => {
 .ask-data {
   background-color: var(--dark-red-ask); /* Dark red */
 }
+
+.sell-trend {
+  background-color: rgb(96, 43, 43);
+}
+
+.data-row {
+  margin-bottom: 5px; /* Add spacing between data rows */
+  display: flex; /* Use flexbox for layout */
+  table-layout: fixed; /* Fixed table layout */
+  width: 100%; /* Take full width */
+}
+
+.label {
+  font-weight: bold;
+  margin-right: 5px;
+  width: 50%; /* Fixed width for label column */
+  text-align: left; /* Align label to the left */
+}
+
+.value {
+  color: var(--light-text); /* Use a lighter text color */
+  width: 50%; /* Fixed width for value column */
+  text-align: right; /* Align value to the right */
+}
+
+.strong-buy::before {
+  content: "▲ "; /* Upward triangle */
+  color: green;
+}
+
+.strong-sell::before {
+  content: "▼ "; /* Downward triangle */
+  color: red;
+}
+
+.neutral {
+  color: gray;
+}
+
+/* Style the spread */
+.spread {
+  font-size: 20px; /* Larger font size */
+  color: orange; /* Different color */
+  font-weight: bold;
+}
+
 /* New styles for the button */
 button {
-  padding: 10px 20px;
+  padding: 8px 16px; /* Smaller button padding */
   border: none;
   color: white;
   cursor: pointer;
   border-radius: 5px;
   transition: background-color 0.3s ease;
+  font-size: 12px; /* Smaller button font size */
 }
 
 .start-button {
@@ -191,5 +309,11 @@ button {
   position: absolute; /* Position the container absolutely */
   bottom: 10px; /* Align to the bottom */
   right: 10px; /* Align to the right */
+}
+
+/* Add this class to DepthDisplay to match grid item size */
+.grid-item {
+  min-width: 300px;
+  flex: 1; /* Allow the item to grow to fill available space */
 }
 </style>

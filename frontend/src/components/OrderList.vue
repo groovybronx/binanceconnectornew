@@ -31,6 +31,7 @@
             <th>Price</th>
             <th>Quantity</th>
             <th>Time</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -44,6 +45,11 @@
             <td>{{ order.price }}</td>
             <td>{{ order.origQty }}</td>
             <td>{{ new Date(order.time).toLocaleString() }}</td>
+            <td>
+              <button v-if="['NEW', 'PARTIALLY_FILLED'].includes(order.status)" @click="cancelOrder(order)">
+                Cancel
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -123,6 +129,36 @@ onMounted(() => {
   selectedSymbol.value = webSocketStore.currentPair;
   fetchOrders();
 });
+
+const cancelOrder = async (order) => {
+  console.log('OrderList: Cancelling order:', order);
+  try {
+    const apiUrl = `http://localhost:8080/api/cancel-order`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        symbol: order.symbol,
+        orderId: order.orderId,
+        origClientOrderId: order.clientOrderId,
+      }),
+    });
+
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('OrderList: Order cancelled:', data);
+    fetchOrders(); // Refresh orders after cancellation
+  } catch (err) {
+    error.value = err.message;
+    console.error('OrderList: Error cancelling order:', err);
+  }
+};
 </script>
 
 <style scoped>
