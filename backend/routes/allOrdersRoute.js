@@ -21,7 +21,10 @@ function createAllOrdersRoute(client) {
   router.get('/', async (req, res) => {
     console.log(`Backend: Received HTTP request on /api/all-orders`);
     try {
-      const symbol = 'XRPUSDT'; // You can change this to get orders for a different symbol
+      const symbol = req.query.symbol;
+      if (!symbol) {
+        return res.status(400).json({ error: 'Symbol is required.' });
+      }
       const allOrdersResponse = await client.allOrders(symbol);
       console.log('Backend: All orders response:', allOrdersResponse.data);
       res.status(200).json(allOrdersResponse.data);

@@ -13,7 +13,7 @@ function createOrdersRoute(client) {
   router.get('/', async (req, res) => {
     console.log(`Backend: Received HTTP request on /api/orders`);
     try {
-      const symbol = req.query.symbol || 'XRPUSDT';
+      const symbol = req.query.symbol ;
       const [allOrdersResponse, openOrdersResponse] = await Promise.all([
         client.allOrders(symbol),
         client.openOrders({ symbol: symbol }),

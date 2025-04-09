@@ -53,6 +53,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useWebSocketStore } from '../stores/webSocket';
+import { useOrderListStore } from '../stores/orderList';
 
 const webSocketStore = useWebSocketStore();
 
@@ -79,7 +80,8 @@ const placeOrder = async () => {
   try {
     const orderDataToSend = { ...orderData.value };
     if (orderDataToSend.type === 'MARKET') {
-      delete orderDataToSend.price;
+      delete orderDataToSend.timeInForce;
+      delete orderDataToSend.price; // Remove price for market orders
     }
 
     const response = await fetch('http://localhost:8080/api/place-order', {
@@ -100,6 +102,10 @@ const placeOrder = async () => {
     const result = await response.json();
     orderResponse.value = JSON.stringify(result, null, 2);
     console.log('OrderPlacement: Order placed successfully:', result);
+    // Refresh orders in OrderList
+    const { fetchOpenOrders, fetchOrderHistory } = useOrderListStore();
+    fetchOpenOrders();
+    fetchOrderHistory();
   } catch (error) {
     errorMessage.value = error.message;
     console.error('OrderPlacement: Error placing order:', error);

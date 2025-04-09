@@ -29,6 +29,7 @@ const createOrderTestRoute = require('./routes/orderTestRoute')(client);
 const allOrdersRoute = require('./routes/allOrdersRoute')(client);
 const createOrdersRoute = require('./routes/ordersRoute');
 const createCancelOrderRoute = require('./routes/cancelOrderRoute');
+const createPositionsRoute = require('./routes/positionsRoute');
 
 
 
@@ -43,6 +44,7 @@ const createCancelOrderRoute = require('./routes/cancelOrderRoute');
   router.use('/test-order', createOrderTestRoute);
   router.use('/all-orders', allOrdersRoute);
   router.use('/cancel-order', createCancelOrderRoute(client));
+  router.use('/positions', createPositionsRoute(client));
   router.use('/place-order', placeOrderRoutes);
 
   // Mount the router to the app

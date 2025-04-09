@@ -49,7 +49,7 @@ select {
 }
 
 button {
-  background-color: var(--green);
+  background-color: var(--dark-green);
   color: var(--light-text);
   border: none;
   border-radius: 5px;

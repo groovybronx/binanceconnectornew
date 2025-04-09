@@ -1,55 +1,73 @@
 <template>
   <div class="order-list component-container rounded shadow gradient-background">
     <h3>Order List</h3>
-    <div class="filter-container">
-      <label for="order-filter">Filter:</label>
-      <select id="order-filter" v-model="orderFilter">
-        <option value="all">All Orders</option>
-        <option value="open">Open Orders</option>
-      </select>
+    <div class="tab-container">
+      <button :class="{ active: activeTab === 'openOrders' }" @click="activeTab = 'openOrders'">Open Orders</button>
+      <button :class="{ active: activeTab === 'orderHistory' }" @click="activeTab = 'orderHistory'">Order History</button>
+      <button :class="{ active: activeTab === 'tradeHistory' }" @click="activeTab = 'tradeHistory'">Trade History</button>
     </div>
-    <div class="symbol-container">
-      <label for="symbol-select">Symbol:</label>
-      <select id="symbol-select" v-model="selectedSymbol">
-        <option value="XRPUSDT">XRPUSDT</option>
-        <option value="BTCUSDT">BTCUSDT</option>
-        <!-- Add more symbols here -->
-      </select>
-    </div>
-    <div v-if="isLoading" class="loading-indicator">Loading orders...</div>
+    <div v-if="isLoading" class="loading-indicator">Loading...</div>
     <div v-else-if="error" class="error-message rounded">Error: {{ error }}</div>
     <div v-else class="order-list-container">
       <table class="order-table">
         <thead>
-          <tr>
+          <tr v-if="activeTab === 'openOrders'">
+            <th>Date</th>
+            <th>Type</th>
+            <th>Direction</th>
+            <th>Price</th>
+            <th>Amount</th>
+            <th>Actions</th>
+          </tr>
+          <tr v-if="activeTab === 'orderHistory'">
+            <th>Date</th>
             <th>Symbol</th>
-            <th>Order ID</th>
-            <th>Client Order ID</th>
             <th>Side</th>
             <th>Type</th>
             <th>Status</th>
             <th>Price</th>
             <th>Quantity</th>
-            <th>Time</th>
-            <th>Actions</th>
+          </tr>
+          <tr v-if="activeTab === 'tradeHistory'">
+            <th>Date</th>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Fee</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="order in filteredOrders" :key="order.orderId">
-            <td>{{ order.symbol }}</td>
-            <td>{{ order.orderId }}</td>
-            <td>{{ order.clientOrderId }}</td>
-            <td>{{ order.side }}</td>
-            <td>{{ order.type }}</td>
-            <td :class="getOrderStatusClass(order.status)">{{ order.status }}</td>
-            <td>{{ order.price }}</td>
-            <td>{{ order.origQty }}</td>
-            <td>{{ new Date(order.time).toLocaleString() }}</td>
-            <td>
-              <button v-if="['NEW', 'PARTIALLY_FILLED'].includes(order.status)" @click="cancelOrder(order)">
-                Cancel
-              </button>
-            </td>
+          <tr v-for="item in tableData" :key="item.id">
+            <template v-if="activeTab === 'openOrders'">
+              <td>{{ new Date(item.time).toLocaleString() }}</td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.side }}</td>
+              <td>{{ item.price }}</td>
+              <td>{{ item.origQty }}</td>
+              <td>
+                <button v-if="['NEW', 'PARTIALLY_FILLED'].includes(item.status)" @click="cancelOrder(item)">
+                  Cancel
+                </button>
+              </td>
+            </template>
+            <template v-if="activeTab === 'orderHistory'">
+              <td>{{ new Date(item.time).toLocaleString() }}</td>
+              <td>{{ item.symbol }}</td>
+              <td>{{ item.side }}</td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.status }}</td>
+              <td>{{ item.price }}</td>
+              <td>{{ item.origQty }}</td>
+            </template>
+            <template v-if="activeTab === 'tradeHistory'">
+              <td>{{ new Date(item.time).toLocaleString() }}</td>
+              <td>{{ item.symbol }}</td>
+              <td>{{ item.side }}</td>
+              <td>{{ item.price }}</td>
+              <td>{{ item.origQty }}</td>
+              <td>{{ item.fee }}</td>
+            </template>
           </tr>
         </tbody>
       </table>
@@ -66,15 +84,78 @@ const webSocketStore = useWebSocketStore();
 const orders = ref([]);
 const isLoading = ref(false);
 const error = ref(null);
-const orderFilter = ref('all');
-const selectedSymbol = ref('XRPUSDT');
+const positions = ref([]);
+const activeTab = ref('openOrders');
+const openOrders = ref([]);
+const orderHistory = ref([]);
+const tradeHistory = ref([]);
 
-const fetchOrders = async () => {
+const fetchOpenOrders = async () => {
   isLoading.value = true;
   error.value = null;
+  console.log('OrderList: fetchOpenOrders called with symbol:', webSocketStore.currentPair);
   try {
-    const apiUrl = `http://localhost:8080/api/orders?symbol=${selectedSymbol.value}`;
-    console.log('OrderList: Fetching orders from:', apiUrl);
+    const apiUrl = `http://localhost:8080/api/orders?symbol=${webSocketStore.currentPair}`;
+    console.log('OrderList: Fetching open orders from:', apiUrl);
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error || `HTTP error! status: ${response.status}`);
+    }
+    console.log('OrderList: fetchOpenOrders response', response);
+
+    const data = await response.json();
+    openOrders.value = data.filter(order => order.status !== 'FILLED' && order.status !== 'CANCELED' && order.status !== 'REJECTED' && order.status !== 'EXPIRED');
+  } catch (err) {
+    error.value = err.message;
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const fetchOrderHistory = async () => {
+    isLoading.value = true;
+    error.value = null;
+    console.log('OrderList: fetchOrderHistory called with symbol:', webSocketStore.currentPair);
+    try {
+      const apiUrl = `http://localhost:8080/api/all-orders?symbol=${webSocketStore.currentPair}`;
+      console.log('OrderList: Fetching order history from:', apiUrl);
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      orderHistory.value = data.reverse();
+    } catch (err) {
+      error.value = err.message;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+const fetchTradeHistory = async () => {
+  // TODO: Implement trade history fetching logic
+  tradeHistory.value = []; // Placeholder
+};
+
+const fetchPositions = async () => {
+  try {
+    const apiUrl = `http://localhost:8080/api/positions`;
+    console.log('OrderList: Fetching positions from:', apiUrl);
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
@@ -88,21 +169,11 @@ const fetchOrders = async () => {
     }
 
     const data = await response.json();
-    orders.value = data;
+    positions.value = data;
   } catch (err) {
-    error.value = err.message;
-  } finally {
-    isLoading.value = false;
+    console.error('OrderList: Error fetching positions:', err);
   }
 };
-
-const filteredOrders = computed(() => {
-  if (orderFilter.value === 'open') {
-    return orders.value.filter(order => order.status !== 'FILLED' && order.status !== 'CANCELED' && order.status !== 'REJECTED' && order.status !== 'EXPIRED');
-  } else {
-    return orders.value;
-  }
-});
 
 const getOrderStatusClass = (status) => {
   switch (status) {
@@ -112,23 +183,15 @@ const getOrderStatusClass = (status) => {
     case 'FILLED':
       return 'status-executed';
     case 'CANCELED':
-    case 'REJECTED':
-    case 'EXPIRED':
       return 'status-canceled';
+    case 'REJECTED':
+      return 'status-rejected';
+    case 'EXPIRED':
+      return 'status-expired';
     default:
       return '';
   }
 };
-
-watch([orderFilter, selectedSymbol, () => webSocketStore.currentPair], () => {
-  console.log('Order filter changed to:', orderFilter.value);
-  fetchOrders();
-});
-
-onMounted(() => {
-  selectedSymbol.value = webSocketStore.currentPair;
-  fetchOrders();
-});
 
 const cancelOrder = async (order) => {
   console.log('OrderList: Cancelling order:', order);
@@ -153,12 +216,38 @@ const cancelOrder = async (order) => {
 
     const data = await response.json();
     console.log('OrderList: Order cancelled:', data);
-    fetchOrders(); // Refresh orders after cancellation
+    fetchOpenOrders();
+    fetchOrderHistory();
   } catch (err) {
     error.value = err.message;
     console.error('OrderList: Error cancelling order:', err);
   }
 };
+
+const tableData = computed(() => {
+  if (activeTab.value === 'openOrders') {
+    return openOrders.value;
+  } else if (activeTab.value === 'orderHistory') {
+    return orderHistory.value;
+  } else if (activeTab.value === 'tradeHistory') {
+    return tradeHistory.value;
+  }
+  return [];
+});
+
+watch(() => webSocketStore.currentPair, () => {
+  console.log('Order filter changed to:', webSocketStore.currentPair);
+  fetchOpenOrders();
+  fetchOrderHistory();
+  fetchTradeHistory();
+});
+
+onMounted(() => {
+  fetchOpenOrders();
+  fetchOrderHistory();
+  fetchTradeHistory();
+  fetchPositions();
+});
 </script>
 
 <style scoped>
@@ -211,6 +300,12 @@ const cancelOrder = async (order) => {
 }
 
 .status-canceled {
+  color: red;
+}
+.status-rejected {
+  color: red;
+}
+.status-expired {
   color: red;
 }
 </style>

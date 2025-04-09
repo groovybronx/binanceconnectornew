@@ -37,6 +37,8 @@ function createOrderRoutes(client) {
           icebergQty: orderData.icebergQty,
           ...(['MARKET', 'LIMIT_MAKER'].includes(orderData.type) ? {} : {  }),
           newOrderRespType: orderData.newOrderRespType,
+          timeInForce: orderData.timeInForce,
+          newClientOrderId: orderData.newClientOrderId,
         }
       );
 
